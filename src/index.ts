@@ -123,6 +123,15 @@ export type TypeDef =
     | ["map", TypeDef]
     | { [name: string]: TypeDef }
 
+export function isType<T>(data: unknown, type: TypeDef): data is T {
+    try {
+        assertType<T>(data, type)
+        return true
+    } catch (ex) {
+        return false
+    }
+}
+
 export function assertType<T>(
     data: unknown,
     type: TypeDef,
