@@ -121,6 +121,7 @@ export type TypeDef =
     | ["array", TypeDef]
     | [`array(${number})`, TypeDef]
     | ["map", TypeDef]
+    | ["literal", ...string[]]
     | { [name: string]: TypeDef }
 
 export function isType<T>(data: unknown, type: TypeDef): data is T {
@@ -169,6 +170,9 @@ export function assertType<T>(
                 return
             case "|":
                 assertTypeAlternative(data, prefix, type)
+                return
+            case "literal":
+                assertTypeLiteral(data, prefix, type)
                 return
             default:
                 if (kind.startsWith("array(")) {
@@ -285,4 +289,20 @@ function assertTypeAlternative(
         }
     }
     throw lastException
+}
+
+function assertTypeLiteral(
+    data: unknown,
+    prefix: string,
+    type: ["literal", ...string[]]
+) {
+    const [, ...literals] = type
+    for (const literal of literals) {
+        if (data === literal) return
+    }
+    throw Error(
+        `Expected ${prefix} to be a literal (${literals
+            .map(item => `"${item}"`)
+            .join(" | ")})!`
+    )
 }

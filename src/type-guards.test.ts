@@ -28,5 +28,27 @@ describe("@tolokoban/type-guards", () => {
         it(`should not confuse undefined with null`, () => {
             expect(() => assertType(null, "undefined")).toThrow()
         })
+        it("should recognize literals", () => {
+            expect(() =>
+                assertType("cherry", [
+                    "literal",
+                    "ananas",
+                    "banaba",
+                    "cherry",
+                    "dattes",
+                ])
+            ).not.toThrow()
+        })
+        it("should recognize non literals", () => {
+            expect(() =>
+                assertType("prout", [
+                    "literal",
+                    "ananas",
+                    "banaba",
+                    "cherry",
+                    "dattes",
+                ])
+            ).toThrow()
+        })
     })
 })
