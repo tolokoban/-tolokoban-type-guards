@@ -28,6 +28,44 @@ describe("@tolokoban/type-guards", () => {
         it(`should not confuse undefined with null`, () => {
             expect(() => assertType(null, "undefined")).toThrow()
         })
+        it(`should work with objects`, () => {
+            expect(() => assertType({}, { name: "string" })).toThrow()
+            expect(() =>
+                assertType({ name: "Paula" }, { name: "string" })
+            ).not.toThrow()
+            expect(() =>
+                assertType({ name: 666 }, { name: "string" })
+            ).toThrow()
+            expect(() =>
+                assertType({ name: "Matha" }, { name: "string", age: "number" })
+            ).toThrow()
+        })
+        it(`should work with partials`, () => {
+            expect(() =>
+                assertType({}, [
+                    "partial",
+                    {
+                        name: "string",
+                    },
+                ])
+            ).not.toThrow()
+            expect(() =>
+                assertType({ name: "William" }, [
+                    "partial",
+                    {
+                        name: "string",
+                    },
+                ])
+            ).not.toThrow()
+            expect(() =>
+                assertType({ name: 666 }, [
+                    "partial",
+                    {
+                        name: "string",
+                    },
+                ])
+            ).toThrow()
+        })
         it("should recognize literals", () => {
             expect(() =>
                 assertType("cherry", [

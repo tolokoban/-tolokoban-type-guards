@@ -122,6 +122,7 @@ export type TypeDef =
     | [`array(${number})`, TypeDef]
     | ["map", TypeDef]
     | ["literal", ...string[]]
+    | ["partial", { [name: string]: TypeDef }]
     | { [name: string]: TypeDef }
 
 export function isType<T>(data: unknown, type: TypeDef): data is T {
@@ -171,6 +172,9 @@ export function assertType<T>(
             case "|":
                 assertTypeAlternative(data, prefix, type)
                 return
+            case "partial":
+                assertTypePartial(data, prefix, type)
+                return
             case "literal":
                 assertTypeLiteral(data, prefix, type)
                 return
@@ -205,8 +209,23 @@ export function assertType<T>(
     for (const name of Object.keys(type)) {
         if (typeof name !== "string") continue
 
-        const objType = type[name]
-        if (objType) assertType(obj[name], type[name], `${prefix}.${name}`)
+        assertType(obj[name], type[name], `${prefix}.${name}`)
+    }
+}
+
+function assertTypePartial(
+    data: unknown,
+    prefix: string,
+    [, type]: ["partial", { [name: string]: TypeDef }]
+) {
+    assertObject(data, prefix)
+    for (const name of Object.keys(type)) {
+        if (typeof name !== "string") continue
+
+        const attrib: unknown = data[name]
+        if (typeof attrib !== "undefined") {
+            assertType(attrib, type[name], `${prefix}.${name}`)
+        }
     }
 }
 
