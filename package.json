@@ -17,6 +17,7 @@
         "build": "rollup -c",
         "prelink": "npm run build",
         "link": "npm link",
+        "prepub": "npm run build",
         "pub": "npm publish --access public",
         "test": "jest"
     },
