@@ -85,6 +85,17 @@ export function assertObject(
     }
 }
 
+export function assertArray(
+    data: unknown,
+    name = "data"
+): asserts data is unknown[] {
+    if (!Array.isArray(data)) {
+        throw Error(
+            `${name} was expected to be an Array but we got ${typeof data}!`
+        )
+    }
+}
+
 export function assertArrayBuffer(
     data: unknown,
     name = "data"
@@ -121,6 +132,7 @@ export type TypeDef =
     | ["array", TypeDef]
     | [`array(${number})`, TypeDef]
     | ["map", TypeDef]
+    | ["tuple", ...TypeDef[]]
     | ["literal", ...string[]]
     | ["partial", { [name: string]: TypeDef }]
     | { [name: string]: TypeDef }
@@ -172,6 +184,9 @@ export function assertType<T>(
             case "|":
                 assertTypeAlternative(data, prefix, type)
                 return
+            case "tuple":
+                assertTypeTuple(data, prefix, type)
+                return
             case "partial":
                 assertTypePartial(data, prefix, type)
                 return
@@ -210,6 +225,23 @@ export function assertType<T>(
         if (typeof name !== "string") continue
 
         assertType(obj[name], type[name], `${prefix}.${name}`)
+    }
+}
+
+function assertTypeTuple(
+    data: unknown,
+    prefix: string,
+    [, ...types]: ["tuple", ...TypeDef[]]
+) {
+    assertArray(data)
+    if (types.length !== data.length) {
+        throw Error(
+            `Expected ${prefix} to have ${types.length} elements, not ${data.length}!`
+        )
+    }
+    for (let i = 0; i < types.length; i++) {
+        const type: TypeDef = types[i] as TypeDef
+        assertType(data[i], type, `${prefix}[$i]`)
     }
 }
 

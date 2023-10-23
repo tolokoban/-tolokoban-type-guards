@@ -1,92 +1,107 @@
-import { assertType } from "."
+import { TypeDef, assertType } from "."
 
 describe("@tolokoban/type-guards", () => {
     describe("assertType()", () => {
-        it("should recognize boolean", () => {
-            expect(() => assertType(true, "boolean")).not.toThrow()
-            expect(() => assertType(false, "boolean")).not.toThrow()
-            expect(() => assertType(1, "boolean")).toThrow()
+        const itShouldThrow = (data: unknown, type: TypeDef) => {
+            it(`should throw for ${JSON.stringify(data)} with ${JSON.stringify(
+                type
+            )}`, () => {
+                expect(() => assertType(data, type)).toThrow()
+            })
+        }
+        const itShouldNotThrow = (data: unknown, type: TypeDef) => {
+            it(`should NOT throw for ${JSON.stringify(
+                data
+            )} with ${JSON.stringify(type)}`, () => {
+                expect(() => assertType(data, type)).not.toThrow()
+            })
+        }
+        describe(`"boolean"`, () => {
+            itShouldNotThrow(true, "boolean")
+            itShouldNotThrow(false, "boolean")
+            itShouldThrow(1, "boolean")
+            itShouldThrow(0, "boolean")
         })
-        it("should recognize number", () => {
-            expect(() => assertType(3.14, "number")).not.toThrow()
-            expect(() => assertType("3.14", "number")).toThrow()
+        describe(`"number"`, () => {
+            itShouldNotThrow(3.14, "number")
+            itShouldThrow("3.14", "number")
         })
-        it("should recognize string", () => {
-            expect(() => assertType("Hello", "string")).not.toThrow()
-            expect(() => assertType("", "string")).not.toThrow()
-            expect(() => assertType(3.14, "string")).toThrow()
+        describe(`"string"`, () => {
+            itShouldNotThrow("Hello", "string")
+            itShouldNotThrow("", "string")
+            itShouldThrow(3.14, "string")
         })
-        it("should recognize null", () => {
-            expect(() => assertType(null, "null")).not.toThrow()
+        describe(`"null"`, () => {
+            itShouldNotThrow(null, "null")
+            itShouldThrow(undefined, "null")
         })
-        it("should recognize undefined", () => {
-            expect(() => assertType(undefined, "undefined")).not.toThrow()
+        describe(`"undefined"`, () => {
+            itShouldNotThrow(undefined, "undefined")
+            itShouldThrow(null, "undefined")
         })
-        it(`should not confuse null with undefined`, () => {
-            expect(() => assertType(undefined, "null")).toThrow()
+        describe(`["tuples", ...]`, () => {
+            itShouldNotThrow([6, 8], ["tuple", "number", "number"])
+            itShouldNotThrow(
+                [6, "six", 8, "eight"],
+                ["tuple", "number", "string", "number", "string"]
+            )
+            itShouldThrow(
+                [6, "six", 8],
+                ["tuple", "number", "string", "number", "string"]
+            )
+            itShouldThrow(
+                ["six", 6, "eight", 8],
+                ["tuple", "number", "string", "number", "string"]
+            )
         })
-        it(`should not confuse undefined with null`, () => {
-            expect(() => assertType(null, "undefined")).toThrow()
+        describe(`{...}`, () => {
+            itShouldThrow({}, { name: "string" })
+            itShouldNotThrow({ name: "Paula" }, { name: "string" })
+            itShouldThrow({ name: 666 }, { name: "string" })
+            itShouldThrow({ name: "Martha" }, { name: "string", age: "number" })
         })
-        it(`should work with objects`, () => {
-            expect(() => assertType({}, { name: "string" })).toThrow()
-            expect(() =>
-                assertType({ name: "Paula" }, { name: "string" })
-            ).not.toThrow()
-            expect(() =>
-                assertType({ name: 666 }, { name: "string" })
-            ).toThrow()
-            expect(() =>
-                assertType({ name: "Matha" }, { name: "string", age: "number" })
-            ).toThrow()
+        describe(`["partial", {...}]`, () => {
+            itShouldNotThrow({}, [
+                "partial",
+                {
+                    name: "string",
+                },
+            ])
+            itShouldNotThrow({ name: "William" }, [
+                "partial",
+                {
+                    name: "string",
+                    age: "number",
+                },
+            ])
+            itShouldNotThrow({ age: 21 }, [
+                "partial",
+                {
+                    name: "string",
+                },
+            ])
+            itShouldThrow({ name: 666 }, [
+                "partial",
+                {
+                    name: "string",
+                },
+            ])
         })
-        it(`should work with partials`, () => {
-            expect(() =>
-                assertType({}, [
-                    "partial",
-                    {
-                        name: "string",
-                    },
-                ])
-            ).not.toThrow()
-            expect(() =>
-                assertType({ name: "William" }, [
-                    "partial",
-                    {
-                        name: "string",
-                    },
-                ])
-            ).not.toThrow()
-            expect(() =>
-                assertType({ name: 666 }, [
-                    "partial",
-                    {
-                        name: "string",
-                    },
-                ])
-            ).toThrow()
-        })
-        it("should recognize literals", () => {
-            expect(() =>
-                assertType("cherry", [
-                    "literal",
-                    "ananas",
-                    "banaba",
-                    "cherry",
-                    "dattes",
-                ])
-            ).not.toThrow()
-        })
-        it("should recognize non literals", () => {
-            expect(() =>
-                assertType("prout", [
-                    "literal",
-                    "ananas",
-                    "banaba",
-                    "cherry",
-                    "dattes",
-                ])
-            ).toThrow()
+        describe(`["literal", ...]`, () => {
+            itShouldNotThrow("cherry", [
+                "literal",
+                "ananas",
+                "banaba",
+                "cherry",
+                "dattes",
+            ])
+            itShouldThrow("prout", [
+                "literal",
+                "ananas",
+                "banaba",
+                "cherry",
+                "dattes",
+            ])
         })
     })
 })
