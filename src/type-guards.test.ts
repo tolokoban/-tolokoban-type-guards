@@ -1,4 +1,4 @@
-import { TypeDef, assertType } from "."
+import { TypeDef, assertType, ensureType } from "."
 
 describe("@tolokoban/type-guards", () => {
     describe("assertType()", () => {
@@ -102,6 +102,24 @@ describe("@tolokoban/type-guards", () => {
                 "cherry",
                 "dattes",
             ])
+        })
+    })
+    describe("ensureType()", () => {
+        describe("defaultValue", () => {
+            it(`should return the value`, () => {
+                expect(ensureType(true, "boolean", 666)).toBe(true)
+            })
+            it(`should return defaultValue`, () => {
+                expect(ensureType<number>("Blob", "number", 666)).toBe(666)
+            })
+            it(`should convert old version`, () => {
+                expect(
+                    ensureType("true", "boolean", v => {
+                        if (v === "true") return true
+                        return false
+                    })
+                ).toBe(true)
+            })
         })
     })
 })

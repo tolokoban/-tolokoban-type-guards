@@ -357,3 +357,69 @@ function assertTypeLiteral(
             .join(" | ")})!`
     )
 }
+
+/**
+ * Basically, this function checks a `data` against a `type` and returns a `defaultValue`
+ * if `data` is not of the expected type.
+ *
+ * But if the `defaultValue` is a function returning the expected `type`, then `ensureType`
+ * can be use to update old data that you have retrieved from local storage, for example.
+ *
+ * @example
+ * ```
+ * interface Complex { r: number, i: number }
+ * const complex = ensureType<Complex>(data, {r: "number", i: "number"}, { r: 1, i: 0 })
+ * ```
+ *
+ * @example
+ * ```
+ * interpace PersonVersion1 {
+ *   name: string
+ *   female: boolean
+ * }
+ * interpace PersonVersion2 {
+ *   name: string
+ *   gender: "male" | "female" | "nonbinary" | "unknown"
+ * }
+ *
+ * const data = JSON.parse(LocalStorate.getItem("person") ?? "null")
+ * const TypePersonVersion1 = {
+ *   name: "string",
+ *   female: "boolean"
+ * }
+ * const TypePersonVersion2 = {
+ *   name: "string",
+ *   gender: ["literal", "male", "female", "nonbinary", "unknown"]
+ * }
+ * const person = ensureType<PersonVersion2>(
+ *   data,
+ *   TypePersonVersion2,
+ *   (value: unknown) => {
+ *     if (isType<PersonVersion2>(value, TypePersonVersion2)) {
+ *       return value
+ *     }
+ *     if (isType<PersonVersion1>(value, TypePersonVersion1)) {
+ *       return {
+ *         name: value.name,
+ *         gender: value.female === true ? "female" : "unknown"
+ *       }
+ *     }
+ *     return { name: "Anonymous", gender: "unknown" }
+ *   }
+ * )
+ * ```
+ *
+ * @param data Value with unknown type.
+ * @param type The type to check against.
+ * @param defaultValue If the type doesn't check, we can return `defaultValue`, or call it if this is a function.
+ * @returns A value that is of the expected type.
+ */
+export function ensureType<T>(
+    data: unknown,
+    type: TypeDef,
+    defaultValue: T | ((v: unknown) => T)
+): T {
+    if (isType<T>(data, type)) return data
+
+    return isType<T>(defaultValue, type) ? defaultValue : defaultValue(data)
+}
