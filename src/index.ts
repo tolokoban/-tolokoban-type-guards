@@ -118,7 +118,9 @@ export function assertOptionalArrayBuffer(
     }
 }
 
+export type TypeDefFunction = (data: unknown) => boolean
 export type TypeDef =
+    | TypeDefFunction
     | "boolean"
     | "null"
     | "number"
@@ -151,6 +153,13 @@ export function assertType<T>(
     type: TypeDef,
     prefix = "data"
 ): asserts data is T {
+    if (typeof type === "function") {
+        if (!type(data)) {
+            throw Error(`Expectd ${prefix} to return tru in function ${type}!`)
+        }
+        return
+    }
+
     if (type === "unknown") return
 
     if (type === "null") {

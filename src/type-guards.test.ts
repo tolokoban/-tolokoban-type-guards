@@ -1,12 +1,18 @@
-import { TypeDef, assertType, ensureType } from "."
+import { TypeDef, assertType, ensureType, isString } from "."
 
 describe("@tolokoban/type-guards", () => {
     describe("assertType()", () => {
-        const itShouldThrow = (data: unknown, type: TypeDef) => {
+        const itShouldThrow = (
+            data: unknown,
+            type: TypeDef,
+            expectedErrorMessage?: string
+        ) => {
             it(`should throw for ${JSON.stringify(data)} with ${JSON.stringify(
                 type
             )}`, () => {
-                expect(() => assertType(data, type)).toThrow()
+                expect(() => assertType(data, type)).toThrow(
+                    expectedErrorMessage
+                )
             })
         }
         const itShouldNotThrow = (data: unknown, type: TypeDef) => {
@@ -16,6 +22,9 @@ describe("@tolokoban/type-guards", () => {
                 expect(() => assertType(data, type)).not.toThrow()
             })
         }
+        describe(`(data: unknown) => boolean`, () => {
+            itShouldThrow(true, isString)
+        })
         describe(`"boolean"`, () => {
             itShouldNotThrow(true, "boolean")
             itShouldNotThrow(false, "boolean")
