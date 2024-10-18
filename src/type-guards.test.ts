@@ -1,4 +1,6 @@
-import { TypeDef, assertType, ensureType, isString } from "."
+import { TypeDef, assertType, ensureType } from "."
+
+const isNeverMyType = (_data: unknown) => false
 
 describe("@tolokoban/type-guards", () => {
     describe("assertType()", () => {
@@ -22,31 +24,64 @@ describe("@tolokoban/type-guards", () => {
                 expect(() => assertType(data, type)).not.toThrow()
             })
         }
+        describe(`"undefined"`, () => {
+            itShouldNotThrow(undefined, "undefined")
+            itShouldThrow(
+                null,
+                "undefined",
+                "Expected data to be a undefined and not a null!"
+            )
+        })
         describe(`(data: unknown) => boolean`, () => {
-            itShouldThrow(true, isString)
+            itShouldThrow(
+                true,
+                isNeverMyType,
+                "Expected isNeverMyType(data) to return true!"
+            )
         })
         describe(`"boolean"`, () => {
             itShouldNotThrow(true, "boolean")
             itShouldNotThrow(false, "boolean")
-            itShouldThrow(1, "boolean")
-            itShouldThrow(0, "boolean")
+            itShouldThrow(
+                1,
+                "boolean",
+                "Expected data to be a boolean and not a number!"
+            )
+            itShouldThrow(
+                "1",
+                "boolean",
+                "Expected data to be a boolean and not a string!"
+            )
         })
         describe(`"number"`, () => {
             itShouldNotThrow(3.14, "number")
-            itShouldThrow("3.14", "number")
+            itShouldThrow(
+                "3.14",
+                "number",
+                "Expected data to be a number and not a string!"
+            )
         })
         describe(`"string"`, () => {
             itShouldNotThrow("Hello", "string")
             itShouldNotThrow("", "string")
-            itShouldThrow(3.14, "string")
+            itShouldThrow(
+                3.14,
+                "string",
+                "Expected data to be a string and not a number!"
+            )
         })
         describe(`"null"`, () => {
             itShouldNotThrow(null, "null")
-            itShouldThrow(undefined, "null")
-        })
-        describe(`"undefined"`, () => {
-            itShouldNotThrow(undefined, "undefined")
-            itShouldThrow(null, "undefined")
+            itShouldThrow(
+                undefined,
+                "null",
+                "Expected data to be a null and not a undefined!"
+            )
+            itShouldThrow(
+                isNeverMyType,
+                "null",
+                "Expected data to be a null and not a function isNeverMyType()!"
+            )
         })
         describe(`["tuples", ...]`, () => {
             itShouldNotThrow([6, 8], ["tuple", "number", "number"])
@@ -56,18 +91,28 @@ describe("@tolokoban/type-guards", () => {
             )
             itShouldThrow(
                 [6, "six", 8],
-                ["tuple", "number", "string", "number", "string"]
+                ["tuple", "number", "string", "number", "string"],
+                "Expected data to have 4 elements, not 3!"
             )
             itShouldThrow(
-                ["six", 6, "eight", 8],
-                ["tuple", "number", "string", "number", "string"]
+                [6, "siz", "8", "eight"],
+                ["tuple", "number", "string", "number", "string"],
+                "Expected data[2] to be a number and not a string!"
             )
         })
         describe(`{...}`, () => {
             itShouldThrow({}, { name: "string" })
             itShouldNotThrow({ name: "Paula" }, { name: "string" })
-            itShouldThrow({ name: 666 }, { name: "string" })
-            itShouldThrow({ name: "Martha" }, { name: "string", age: "number" })
+            itShouldThrow(
+                { name: 666 },
+                { name: "string" },
+                "Expected data.name to be a string and not a number!"
+            )
+            itShouldThrow(
+                { name: "Martha" },
+                { name: "string", age: "number" },
+                "Expected data.age to be a number and not a undefined!"
+            )
         })
         describe(`["partial", {...}]`, () => {
             itShouldNotThrow({}, [
@@ -89,12 +134,16 @@ describe("@tolokoban/type-guards", () => {
                     name: "string",
                 },
             ])
-            itShouldThrow({ name: 666 }, [
-                "partial",
-                {
-                    name: "string",
-                },
-            ])
+            itShouldThrow(
+                { name: 666 },
+                [
+                    "partial",
+                    {
+                        name: "string",
+                    },
+                ],
+                "Expected data.name to be a string and not a number!"
+            )
         })
         describe(`["literal", ...]`, () => {
             itShouldNotThrow("cherry", [
@@ -104,13 +153,11 @@ describe("@tolokoban/type-guards", () => {
                 "cherry",
                 "dattes",
             ])
-            itShouldThrow("prout", [
-                "literal",
-                "ananas",
-                "banaba",
-                "cherry",
-                "dattes",
-            ])
+            itShouldThrow(
+                "prout",
+                ["literal", "ananas", "banaba", "cherry", "dattes"],
+                'Expected data to be a literal ("ananas" | "banaba" | "cherry" | "dattes") and not a string!'
+            )
         })
     })
     describe("ensureType()", () => {

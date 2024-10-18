@@ -21,6 +21,15 @@ export function isArrayBuffer(data: unknown): data is ArrayBuffer {
     return data instanceof ArrayBuffer
 }
 
+export function isArrayBufferView(data: unknown): data is ArrayBufferView {
+    if (!data) return false
+    return ArrayBuffer.isView(data)
+}
+
+export function isBufferSource(data: unknown): data is BufferSource {
+    return isArrayBuffer(data) || isArrayBufferView(data)
+}
+
 export function isStringArray(data: unknown): data is string[] {
     if (!Array.isArray(data)) return false
     // eslint-disable-next-line no-restricted-syntax
@@ -155,7 +164,7 @@ export function assertType<T>(
 ): asserts data is T {
     if (typeof type === "function") {
         if (!type(data)) {
-            throw Error(`Expectd ${prefix} to return tru in function ${type}!`)
+            throw Error(`Expected ${type.name}(${prefix}) to return true!`)
         }
         return
     }
@@ -164,8 +173,11 @@ export function assertType<T>(
 
     if (type === "null") {
         if (data !== null) {
+            console.log("🚀 [index] data = ", data, typeof data) // @FIXME: Remove this line written on 2024-10-18 at 13:22
             throw Error(
-                `Expected ${prefix} to be null and not a ${typeof data}!`
+                `Expected ${prefix} to be a null and not a ${prettytypeof(
+                    data
+                )}!`
             )
         }
         return
@@ -173,7 +185,9 @@ export function assertType<T>(
     if (typeof type === "string") {
         if (typeof data !== type) {
             throw Error(
-                `Expected ${prefix} to be a ${type} and not a ${typeof data}!`
+                `Expected ${prefix} to be a ${type} and not a ${prettytypeof(
+                    data
+                )}!`
             )
         }
         return
@@ -226,7 +240,9 @@ export function assertType<T>(
 
     if (typeof data !== "object")
         throw Error(
-            `Expected ${prefix} to be an object and not a ${typeof data}!`
+            `Expected ${prefix} to be an object and not a ${prettytypeof(
+                data
+            )}!`
         )
 
     const obj = data as { [key: string]: unknown }
@@ -250,7 +266,7 @@ function assertTypeTuple(
     }
     for (let i = 0; i < types.length; i++) {
         const type: TypeDef = types[i] as TypeDef
-        assertType(data[i], type, `${prefix}[$i]`)
+        assertType(data[i], type, `${prefix}[${i}]`)
     }
 }
 
@@ -277,7 +293,7 @@ function assertTypeArray(
 ) {
     if (!Array.isArray(data))
         throw Error(
-            `Expected ${prefix} to be an array and not a ${typeof data}!`
+            `Expected ${prefix} to be an array and not a ${prettytypeof(data)}!`
         )
     const [, subType] = type
     for (let i = 0; i < data.length; i += 1) {
@@ -293,7 +309,7 @@ function assertTypeArrayWithDimension(
 ) {
     if (!Array.isArray(data))
         throw Error(
-            `Expected ${prefix} to be an array and not a ${typeof data}!`
+            `Expected ${prefix} to be an array and not a ${prettytypeof(data)}!`
         )
     if (data.length !== size)
         throw Error(
@@ -308,7 +324,9 @@ function assertTypeArrayWithDimension(
 function assertTypeMap(data: unknown, prefix: string, type: ["map", TypeDef]) {
     if (!isObject(data))
         throw Error(
-            `Expected ${prefix} to be an object and not a ${typeof data}!`
+            `Expected ${prefix} to be an object and not a ${prettytypeof(
+                data
+            )}!`
         )
     const [, subType] = type
     for (const key of Object.keys(data)) {
@@ -363,7 +381,7 @@ function assertTypeLiteral(
     throw Error(
         `Expected ${prefix} to be a literal (${literals
             .map(item => `"${item}"`)
-            .join(" | ")})!`
+            .join(" | ")}) and not a ${prettytypeof(data)}!`
     )
 }
 
@@ -431,4 +449,10 @@ export function ensureType<T>(
     if (isType<T>(data, type)) return data
 
     return isType<T>(defaultValue, type) ? defaultValue : defaultValue(data)
+}
+
+function prettytypeof(data: unknown) {
+    if (data === null) return "null"
+    if (typeof data === "function") return `function ${data.name ?? ""}()`
+    return typeof data
 }
