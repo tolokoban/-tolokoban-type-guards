@@ -129,7 +129,7 @@ export function assertOptionalArrayBuffer(
 
 export type TypeDefFunction = (data: unknown) => boolean
 export type TypeDef =
-    | TypeDefFunction
+    | (() => TypeDef)
     | "boolean"
     | "null"
     | "number"
@@ -137,6 +137,7 @@ export type TypeDef =
     | "function"
     | "undefined"
     | "unknown"
+    | ["custom", TypeDefFunction]
     | ["number", { min?: number; max?: number }]
     | ["|", ...TypeDef[]]
     | ["?", TypeDef]
@@ -148,11 +149,20 @@ export type TypeDef =
     | ["partial", { [name: string]: TypeDef }]
     | { [name: string]: TypeDef }
 
-export function isType<T>(data: unknown, type: TypeDef): data is T {
+export function isType<T>(
+    data: unknown,
+    type: TypeDef,
+    logErrors: string | null = null
+): data is T {
     try {
         assertType<T>(data, type)
         return true
     } catch (ex) {
+        if (logErrors) {
+            console.error("[Invalid type]", logErrors)
+            console.error(data)
+            console.debug(ex)
+        }
         return false
     }
 }
@@ -162,12 +172,7 @@ export function assertType<T>(
     type: TypeDef,
     prefix = "data"
 ): asserts data is T {
-    if (typeof type === "function") {
-        if (!type(data)) {
-            throw Error(`Expected ${type.name}(${prefix}) to return true!`)
-        }
-        return
-    }
+    if (typeof type === "function") return assertType(data, type(), prefix)
 
     if (type === "unknown") return
 
@@ -215,6 +220,9 @@ export function assertType<T>(
                 return
             case "literal":
                 assertTypeLiteral(data, prefix, type)
+                return
+            case "custom":
+                assertTypeCustom(data, prefix, type)
                 return
             default:
                 if (kind.startsWith("array(")) {
@@ -383,6 +391,18 @@ function assertTypeLiteral(
             .map(item => `"${item}"`)
             .join(" | ")}) and not a ${prettytypeof(data)}!`
     )
+}
+
+function assertTypeCustom(
+    data: unknown,
+    prefix: string,
+    [, typeGuard]: ["custom", TypeDefFunction]
+) {
+    // Custom type guard.
+    if (!typeGuard(data)) {
+        throw Error(`Expected ${typeGuard.name}(${prefix}) to return true!`)
+    }
+    return
 }
 
 /**

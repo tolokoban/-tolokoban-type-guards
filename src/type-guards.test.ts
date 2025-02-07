@@ -1,4 +1,4 @@
-import { TypeDef, assertType, ensureType } from "."
+import { TypeDef, assertType, ensureType, isType } from "."
 
 const isNeverMyType = (_data: unknown) => false
 
@@ -32,12 +32,27 @@ describe("@tolokoban/type-guards", () => {
                 "Expected data to be a undefined and not a null!"
             )
         })
-        describe(`(data: unknown) => boolean`, () => {
+        describe(`["custom", (data: unknown) => boolean]`, () => {
             itShouldThrow(
                 true,
-                isNeverMyType,
+                ["custom", isNeverMyType],
                 "Expected isNeverMyType(data) to return true!"
             )
+            const oddString: TypeDef = [
+                "custom",
+                (data: unknown) =>
+                    typeof data === "string" && data.length % 2 === 1,
+            ]
+            const cases: Array<[input: unknown, expected: boolean]> = [
+                [36, false],
+                ["Toto", false],
+                ["foo", true],
+            ]
+            for (const [input, expected] of cases) {
+                it(`should custom check ${JSON.stringify(input)}`, () => {
+                    expect(isType(input, oddString)).toBe(expected)
+                })
+            }
         })
         describe(`"boolean"`, () => {
             itShouldNotThrow(true, "boolean")
@@ -176,6 +191,22 @@ describe("@tolokoban/type-guards", () => {
                     })
                 ).toBe(true)
             })
+        })
+    })
+    describe(`Recursivity`, () => {
+        const tree: TypeDef = () => ({
+            name: "string",
+            children: ["?", ["array", tree]],
+        })
+        it(`should validate this tree`, () => {
+            const data = {
+                name: "root",
+                chidren: [
+                    { name: "end" },
+                    { name: "next", children: [{ name: "grand-child" }] },
+                ],
+            }
+            expect(isType(data, tree))
         })
     })
 })

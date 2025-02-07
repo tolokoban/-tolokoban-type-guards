@@ -17,6 +17,26 @@ TypeScript has a solution for this: [type guards](https://www.typescriptlang.org
 
 This library is just a helper to write complex type guards in a concise way.
 
+## Recursivity
+
+Suppose this type:
+
+```ts
+interface Tree {
+    name: string
+    children?: Tree[]
+}
+```
+
+To describe it with the TypeGuard library you can use the fact that a `TypeDef` can be a function that returns a `TypeGuard`.
+
+```ts
+const treeTypeDef = () => ({
+  name: "string",
+  children: ["?", ["array", treeTypeDef]]
+})
+```
+
 ## Examples
 
 ```ts
