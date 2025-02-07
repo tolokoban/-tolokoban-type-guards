@@ -12,6 +12,18 @@ export function isNumber(data: unknown): data is number {
     return typeof data === "number"
 }
 
+export function isNull(data: unknown): data is null {
+    return typeof data === null
+}
+
+export function isFunction(data: unknown): data is () => unknown {
+    return typeof data === "function"
+}
+
+export function isUndefined(data: unknown): data is undefined {
+    return typeof data === "undefined"
+}
+
 export function isBoolean(data: unknown): data is boolean {
     return typeof data === "boolean"
 }
@@ -128,23 +140,29 @@ export function assertOptionalArrayBuffer(
 }
 
 export type TypeDefFunction = (data: unknown) => boolean
+
+export type TypeDefArray =
+    | ["array", TypeDef]
+    | ["array", TypeDef, number]
+    | ["array", TypeDef, { min?: number; max?: number }]
+
 export type TypeDef =
     | (() => TypeDef)
     | "boolean"
+    | "function"
     | "null"
     | "number"
     | "string"
-    | "function"
     | "undefined"
     | "unknown"
     | ["custom", TypeDefFunction]
     | ["number", { min?: number; max?: number }]
     | ["|", ...TypeDef[]]
     | ["?", TypeDef]
-    | ["array", TypeDef]
-    | [`array(${number})`, TypeDef]
+    | TypeDefArray
     | ["map", TypeDef]
     | ["tuple", ...TypeDef[]]
+    | ["tuple...", ...TypeDef[], TypeDef]
     | ["literal", ...string[]]
     | ["partial", { [name: string]: TypeDef }]
     | { [name: string]: TypeDef }
@@ -215,6 +233,9 @@ export function assertType<T>(
             case "tuple":
                 assertTypeTuple(data, prefix, type)
                 return
+            case "tuple...":
+                assertTypeTupleWithRest(data, prefix, type)
+                return
             case "partial":
                 assertTypePartial(data, prefix, type)
                 return
@@ -225,19 +246,6 @@ export function assertType<T>(
                 assertTypeCustom(data, prefix, type)
                 return
             default:
-                if (kind.startsWith("array(")) {
-                    const size = parseInt(
-                        kind.substring("array(".length, kind.length - 1),
-                        10
-                    )
-                    assertTypeArrayWithDimension(
-                        data,
-                        prefix,
-                        type as [unknown, TypeDef],
-                        size
-                    )
-                    return
-                }
                 throw Error(
                     `Don't know how to create a type guard for this kind of type: ${JSON.stringify(
                         type
@@ -265,16 +273,30 @@ function assertTypeTuple(
     data: unknown,
     prefix: string,
     [, ...types]: ["tuple", ...TypeDef[]]
-) {
+): asserts data is unknown[] {
     assertArray(data)
-    if (types.length !== data.length) {
+    if (types.length > data.length) {
         throw Error(
-            `Expected ${prefix} to have ${types.length} elements, not ${data.length}!`
+            `Expected ${prefix}'s length to be at least ${types.length} and not ${data.length}!`
         )
     }
     for (let i = 0; i < types.length; i++) {
         const type: TypeDef = types[i] as TypeDef
         assertType(data[i], type, `${prefix}[${i}]`)
+    }
+}
+
+function assertTypeTupleWithRest(
+    data: unknown,
+    prefix: string,
+    [, ...types]: ["tuple...", ...TypeDef[], TypeDef]
+) {
+    const last = types.length - 1
+    const fixTypes = types.slice(0, last)
+    assertTypeTuple(data, prefix, ["tuple", ...fixTypes])
+    const rest = types[last]
+    for (let i = last; i < data.length; i++) {
+        assertType(data[i], rest, `${prefix}[${i}]`)
     }
 }
 
@@ -294,36 +316,35 @@ function assertTypePartial(
     }
 }
 
-function assertTypeArray(
-    data: unknown,
-    prefix: string,
-    type: ["array", TypeDef]
-) {
+function assertTypeArray(data: unknown, prefix: string, type: TypeDefArray) {
     if (!Array.isArray(data))
         throw Error(
             `Expected ${prefix} to be an array and not a ${prettytypeof(data)}!`
         )
-    const [, subType] = type
-    for (let i = 0; i < data.length; i += 1) {
-        assertType(data[i], subType, `${prefix}[${i}]`)
+    const [, subType, constraints] = type
+    if (constraints) {
+        const len = data.length
+        if (isNumber(constraints)) {
+            if (len !== constraints) {
+                throw Error(
+                    `Expected ${prefix}'s length to be ${constraints} and not ${len}!`
+                )
+            }
+        } else {
+            const { min, max } = constraints
+            if (isNumber(min) && len < min) {
+                throw Error(
+                    `Expected ${prefix}'s MIN length to be ${min} and not ${len}!`
+                )
+            }
+            if (isNumber(max) && len > max) {
+                throw Error(
+                    `Expected ${prefix}'s MAX length to be ${max} and not ${len}!`
+                )
+            }
+        }
     }
-}
 
-function assertTypeArrayWithDimension(
-    data: unknown,
-    prefix: string,
-    type: [unknown, TypeDef],
-    size: number
-) {
-    if (!Array.isArray(data))
-        throw Error(
-            `Expected ${prefix} to be an array and not a ${prettytypeof(data)}!`
-        )
-    if (data.length !== size)
-        throw Error(
-            `${prefix} was expected to have a length of ${size}, but we got ${data.length}!`
-        )
-    const [, subType] = type
     for (let i = 0; i < data.length; i += 1) {
         assertType(data[i], subType, `${prefix}[${i}]`)
     }

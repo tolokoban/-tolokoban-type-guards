@@ -15,7 +15,135 @@ So casting it like this is dangerous: `const data = await resp.json() as Paintin
 
 TypeScript has a solution for this: [type guards](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
 
-This library is just a helper to write complex type guards in a concise way.
+This library provides three functions (and fez syntaxic sugars) to write complex type guards in a concise way:
+
+* `isType(data, typeDef)`: returns `true` is `data` is of type `typeDef`.
+* `assertType(data, typeDef)`: throws an exception if `data` is not of type `typeDef`.
+* `ensureType(data, typeDef, defaultValue)`: returns `data` is its type is `typeDef`, otherwise returns `defaultValue`. The result is ensured to be of type `typeDef`.
+
+`TypeDef` is the type definition you will use is all of these functions.
+
+Example:
+
+```ts
+interface Member {
+    name: string
+    role?: "admin" | "user" | "guest"
+    birth: [year: number, month: number, day: number]
+}
+
+function isMemberArray(data: unknown): data is Member[] {
+    return isType(data, [
+        "array", {
+            name: "string",
+            role: [
+                "?",
+                ["literal", "admin", "user", "guest"]
+            ]
+        }
+    ])
+}
+```
+
+See below for more examples on how to use it.
+
+## Basic types
+
+Basic types are defined by a single string:
+
+* __`"boolean"`__: `isType(data, "boolean") === isBoolean(data)`
+* __`"function"`__: `isType(data, "function") === isFunction(data)`
+* __`"null"`__: `isType(data, "null") === isNull(data)`
+* __`"number"`__: `isType(data, "number") === isNumber(data)`
+* __`"string"`__: `isType(data, "string") === isString(data)`
+* __`"undefined"`__: `isType(data, "undefined") === isUndefined(data)`
+* __`"unknown"`__: `isType(data, "unknown") === isUnknown(data)`
+
+## Range
+
+If you need to check the bounds of a number, you can use `["number", { min?: number, max?: number }]`
+
+```ts
+const type: TypeDef = {
+    percentage: ["number", { min: 0, max: 100 }],
+    positiveNumber: ["number", { min: 0 }]
+}
+```
+
+## Objects
+
+Type definitions for objects are straigh forward:
+`{ [key: string]: TypeDef }`
+
+```ts
+interface Person {
+    firstname: string
+    lastname: string
+    age: number
+}
+
+const typePerson: TypeDef = {
+    firstname: "string",
+    lastname: "string",
+    age: "number"
+}
+
+interface Troop {
+    chief: Person
+    soldiers: Person[]
+}
+
+const typeTroop: TypeDef = {
+    chief: typePerson,
+    soldiers: ["array", typePerson]
+}
+```
+
+## Arrays and tuples
+
+For an array of variable length, but with all elements having the same type `myType`:
+
+```ts
+const type: TypeDef = ["array", myType]
+```
+
+For an array of constrained length, but with all elements having the same type `myType`:
+
+```ts
+const type1: TypeDef = ["array(3)", myType]
+const type2: TypeDef = ["array", myType, 3]
+const type3: TypeDef = ["array", myType, { min: 2 }]
+const type4: TypeDef = ["array", myType, { max: 5 }]
+const type5: TypeDef = ["array", myType, { min: 2, max: 5 }]
+```
+
+For arrays with elements of different types you can use
+`["tuple", ...TypeDef[]]` or `["tuple...", ...TypeDef[], TypeDef]`:
+
+```ts
+type Operator = ["add" | "mul", number, number]
+const type: TypeDef = [
+    "tuple", ["literal", "add", "mul"], "number", "number"
+]
+```
+
+```ts
+type Operator = ["add" | "mul", ...number[]]
+const type: TypeDef = [
+    "tuple...", ["literal", "add", "mul"], "number"
+]
+```
+
+## Custom
+
+Let's say you have a very specific need, like being able to check if a value is a string with an odd length. Then you will use a custom type:
+
+```ts
+const oddStringType: TypeDef = [
+    "custom",
+    (data: unknown) => isString(data) && data.length % 2 === 1
+]
+```
 
 ## Recursivity
 

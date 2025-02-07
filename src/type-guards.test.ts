@@ -100,6 +100,7 @@ describe("@tolokoban/type-guards", () => {
         })
         describe(`["tuples", ...]`, () => {
             itShouldNotThrow([6, 8], ["tuple", "number", "number"])
+            itShouldNotThrow([6, 8, 1, 2, 3], ["tuple", "number", "number"])
             itShouldNotThrow(
                 [6, "six", 8, "eight"],
                 ["tuple", "number", "string", "number", "string"]
@@ -107,12 +108,65 @@ describe("@tolokoban/type-guards", () => {
             itShouldThrow(
                 [6, "six", 8],
                 ["tuple", "number", "string", "number", "string"],
-                "Expected data to have 4 elements, not 3!"
+                "Expected data's length to be at least 4 and not 3!"
             )
             itShouldThrow(
                 [6, "siz", "8", "eight"],
                 ["tuple", "number", "string", "number", "string"],
                 "Expected data[2] to be a number and not a string!"
+            )
+        })
+        describe(`["tuples...", ...]`, () => {
+            itShouldNotThrow(["burlp", 6, 8], ["tuple...", "string", "number"])
+            itShouldNotThrow(
+                ["burlp", 6, 8, 1, 2, 3],
+                ["tuple", "string", "number"]
+            )
+            itShouldNotThrow(
+                ["burlp", true, 6, 8, 10],
+                ["tuple...", "string", "boolean", "number"]
+            )
+            itShouldThrow(
+                ["burlp", 6, 8, 10],
+                ["tuple...", "string", "boolean", "number"],
+                "Expected data[1] to be a boolean and not a number!"
+            )
+            itShouldThrow(
+                ["burlp", false, 6, 8, 10, "bug", 5, 8],
+                ["tuple...", "string", "boolean", "number"],
+                "Expected data[5] to be a number and not a string!"
+            )
+        })
+        describe(`["array", ...]`, () => {
+            itShouldNotThrow([], ["array", "number"])
+            itShouldNotThrow([1, 2, 3, 4, 5], ["array", "number"])
+            itShouldNotThrow([true, false, true], ["array", "boolean"])
+            itShouldThrow(
+                [1, 2, 3, "4", 5],
+                ["array", "number"],
+                "Expected data[3] to be a number and not a string!"
+            )
+            itShouldThrow(
+                [],
+                ["array", "number", 3],
+                "Expected data's length to be 3 and not 0!"
+            )
+            itShouldThrow(
+                [1, 2, 3, 4, 5],
+                ["array", "number", 3],
+                "Expected data's length to be 3 and not 5!"
+            )
+            itShouldThrow(
+                [],
+                ["array", "number", { min: 3 }],
+                "Expected data's MIN length to be 3 and not 0!"
+            )
+            itShouldNotThrow([1, 2, 3, 4, 5], ["array", "number", { min: 3 }])
+            itShouldNotThrow([], ["array", "number", { max: 3 }])
+            itShouldThrow(
+                [1, 2, 3, 4, 5],
+                ["array", "number", { max: 3 }],
+                "Expected data's MAX length to be 3 and not 5!"
             )
         })
         describe(`{...}`, () => {
