@@ -382,20 +382,25 @@ function assertTypeAlternative(
     type: ["|", ...TypeDef[]]
 ) {
     const [, ...altTypes] = type
-    let lastException = Error(
-        `No type has been defined for this alternative: ${JSON.stringify(
-            type
-        )}!`
-    )
+    if (altTypes.length === 0)
+        throw Error(
+            `No type has been defined for this alternative: ${JSON.stringify(
+                type
+            )}!`
+        )
+
+    const exceptions: Error[] = []
     for (const altType of altTypes) {
         try {
             assertType(data, altType, prefix)
             return
         } catch (ex) {
-            if (ex instanceof Error) lastException = ex
+            if (ex instanceof Error) exceptions.push(ex)
         }
     }
-    throw lastException
+    throw new Error(
+        `All alternatives failed!${exceptions.map(ex => `\n${ex.message}`)}`
+    )
 }
 
 function assertTypeLiteral(
@@ -490,6 +495,18 @@ export function ensureType<T>(
     if (isType<T>(data, type)) return data
 
     return isType<T>(defaultValue, type) ? defaultValue : defaultValue(data)
+}
+
+export function ensureBoolean(data: unknown, defaultValue: boolean): boolean {
+    return ensureType(data, "boolean", defaultValue)
+}
+
+export function ensureNumber(data: unknown, defaultValue: number): number {
+    return ensureType(data, "number", defaultValue)
+}
+
+export function ensureString(data: unknown, defaultValue: string): string {
+    return ensureType(data, "string", defaultValue)
 }
 
 function prettytypeof(data: unknown) {
