@@ -167,13 +167,38 @@ export type TypeDef =
     | ["partial", { [name: string]: TypeDef }]
     | { [name: string]: TypeDef }
 
-export function isType<T>(
+type RealType<T extends TypeDef> = T extends "boolean" ? boolean :  
+  T extends "function" ? ()=>unknown : 
+  T extends "null" ? null : 
+  T extends "number" ? number : 
+  T extends "string" ? string : 
+  T extends "undefined" ? undefined : 
+  T extends "unknown" ? unknown : 
+  T extends ["?", TypeDef] ? RealType<T[1]> | undefined :
+//   T extends ["|", ...TypeDef[]] ? RealType<T[1]> | RealType<T[2]> :
+  T extends ["tuple", TypeDef] ? Array<RealType<T[1]>> :
+  T extends ["array", TypeDef] ? Array<RealType<T[1]>> :
+  T extends { [name: string]: TypeDef } ? { [key in keyof T]: RealType<T[key]> } :
+  T extends ["partial", { [name: string]: TypeDef }] ? Partial<{ [key in keyof T[1]]: RealType<T[1][key]> }> :
+  T extends ["map", TypeDef] ? Record<string, RealType<T[1]>> :
+  T extends ["literal", ...string[]] ? NonNullable<T[1] | T[2] | T[3] | T[4] | T[5] | T[6] | T[7] | T[8] | T[9] | T[10] | T[11] | T[12] | T[13] | T[14] | T[15] | T[16] | T[17] | T[18] | T[19] | T[20]> :
+  unknown
+  
+  export function isType<T extends TypeDef>(
+    data: unknown,
+    type: T,
+    logErrors: string | null = null
+): data is RealType<T> {
+    return isType$<RealType<T>>(data, type, logErrors)
+}
+  
+  export function isType$<T>(
     data: unknown,
     type: TypeDef,
     logErrors: string | null = null
 ): data is T {
     try {
-        assertType<T>(data, type)
+        assertType$<T>(data, type)
         return true
     } catch (ex) {
         if (logErrors) {
@@ -185,12 +210,20 @@ export function isType<T>(
     }
 }
 
-export function assertType<T>(
+export function assertType<T extends TypeDef>(
+    data: unknown,
+    type: T,
+    prefix = "data"
+): asserts data is RealType<T> {
+    return assertType$<RealType<T>>(data, type, prefix)
+}
+
+export function assertType$<T>(
     data: unknown,
     type: TypeDef,
     prefix = "data"
 ): asserts data is T {
-    if (typeof type === "function") return assertType(data, type(), prefix)
+    if (typeof type === "function") return assertType$(data, type(), prefix)
 
     if (type === "unknown") return
 
@@ -198,7 +231,7 @@ export function assertType<T>(
         if (data !== null) {
             console.log("🚀 [index] data = ", data, typeof data) // @FIXME: Remove this line written on 2024-10-18 at 13:22
             throw Error(
-                `Expected ${prefix} to be a null and not a ${prettytypeof(
+                `Expected ${prefix} to be a null and not a ${prettyTypeof(
                     data
                 )}!`
             )
@@ -208,7 +241,7 @@ export function assertType<T>(
     if (typeof type === "string") {
         if (typeof data !== type) {
             throw Error(
-                `Expected ${prefix} to be a ${type} and not a ${prettytypeof(
+                `Expected ${prefix} to be a ${type} and not a ${prettyTypeof(
                     data
                 )}!`
             )
@@ -256,7 +289,7 @@ export function assertType<T>(
 
     if (typeof data !== "object")
         throw Error(
-            `Expected ${prefix} to be an object and not a ${prettytypeof(
+            `Expected ${prefix} to be an object and not a ${prettyTypeof(
                 data
             )}!`
         )
@@ -265,7 +298,7 @@ export function assertType<T>(
     for (const name of Object.keys(type)) {
         if (typeof name !== "string") continue
 
-        assertType(obj[name], type[name], `${prefix}.${name}`)
+        assertType$(obj[name], type[name], `${prefix}.${name}`)
     }
 }
 
@@ -282,7 +315,7 @@ function assertTypeTuple(
     }
     for (let i = 0; i < types.length; i++) {
         const type: TypeDef = types[i] as TypeDef
-        assertType(data[i], type, `${prefix}[${i}]`)
+        assertType$(data[i], type, `${prefix}[${i}]`)
     }
 }
 
@@ -296,7 +329,7 @@ function assertTypeTupleWithRest(
     assertTypeTuple(data, prefix, ["tuple", ...fixTypes])
     const rest = types[last]
     for (let i = last; i < data.length; i++) {
-        assertType(data[i], rest, `${prefix}[${i}]`)
+        assertType$(data[i], rest, `${prefix}[${i}]`)
     }
 }
 
@@ -311,7 +344,7 @@ function assertTypePartial(
 
         const attrib: unknown = data[name]
         if (typeof attrib !== "undefined") {
-            assertType(attrib, type[name], `${prefix}.${name}`)
+            assertType$(attrib, type[name], `${prefix}.${name}`)
         }
     }
 }
@@ -319,7 +352,7 @@ function assertTypePartial(
 function assertTypeArray(data: unknown, prefix: string, type: TypeDefArray) {
     if (!Array.isArray(data))
         throw Error(
-            `Expected ${prefix} to be an array and not a ${prettytypeof(data)}!`
+            `Expected ${prefix} to be an array and not a ${prettyTypeof(data)}!`
         )
     const [, subType, constraints] = type
     if (constraints) {
@@ -346,21 +379,21 @@ function assertTypeArray(data: unknown, prefix: string, type: TypeDefArray) {
     }
 
     for (let i = 0; i < data.length; i += 1) {
-        assertType(data[i], subType, `${prefix}[${i}]`)
+        assertType$(data[i], subType, `${prefix}[${i}]`)
     }
 }
 
 function assertTypeMap(data: unknown, prefix: string, type: ["map", TypeDef]) {
     if (!isObject(data))
         throw Error(
-            `Expected ${prefix} to be an object and not a ${prettytypeof(
+            `Expected ${prefix} to be an object and not a ${prettyTypeof(
                 data
             )}!`
         )
     const [, subType] = type
     for (const key of Object.keys(data)) {
         if (typeof key === "string") {
-            assertType(data[key], subType, `${prefix}[${key}]`)
+            assertType$(data[key], subType, `${prefix}[${key}]`)
         }
     }
 }
@@ -373,7 +406,7 @@ function assertTypeOptional(
     if (typeof data === "undefined") return
 
     const [, optionalType] = type
-    assertType(data, optionalType, prefix)
+    assertType$(data, optionalType, prefix)
 }
 
 function assertTypeAlternative(
@@ -392,7 +425,7 @@ function assertTypeAlternative(
     const exceptions: Error[] = []
     for (const altType of altTypes) {
         try {
-            assertType(data, altType, prefix)
+            assertType$(data, altType, prefix)
             return
         } catch (ex) {
             if (ex instanceof Error) exceptions.push(ex)
@@ -415,7 +448,7 @@ function assertTypeLiteral(
     throw Error(
         `Expected ${prefix} to be a literal (${literals
             .map(item => `"${item}"`)
-            .join(" | ")}) and not a ${prettytypeof(data)}!`
+            .join(" | ")}) and not a ${prettyTypeof(data)}!`
     )
 }
 
@@ -492,9 +525,9 @@ export function ensureType<T>(
     type: TypeDef,
     defaultValue: T | ((v: unknown) => T)
 ): T {
-    if (isType<T>(data, type)) return data
+    if (isType$<T>(data, type)) return data
 
-    return isType<T>(defaultValue, type) ? defaultValue : defaultValue(data)
+    return isType$<T>(defaultValue, type) ? defaultValue : defaultValue(data)
 }
 
 export function ensureBoolean(data: unknown, defaultValue: boolean): boolean {
@@ -509,7 +542,7 @@ export function ensureString(data: unknown, defaultValue: string): string {
     return ensureType(data, "string", defaultValue)
 }
 
-function prettytypeof(data: unknown) {
+function prettyTypeof(data: unknown) {
     if (data === null) return "null"
     if (typeof data === "function") return `function ${data.name ?? ""}()`
     return typeof data

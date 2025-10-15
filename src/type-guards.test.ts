@@ -99,6 +99,9 @@ describe("@tolokoban/type-guards", () => {
             )
         })
         describe(`["tuples", ...]`, () => {
+            const a:unknown = []
+            assertType(a, ["tuple", "number", "string"])
+            console.log('🚀 [type-guards.test] a =', a) // @FIXME: Remove this line written on 2025-10-14 at 18:38
             itShouldNotThrow([6, 8], ["tuple", "number", "number"])
             itShouldNotThrow([6, 8, 1, 2, 3], ["tuple", "number", "number"])
             itShouldNotThrow(
